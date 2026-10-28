@@ -1,0 +1,36 @@
+name: Build
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pymupdf vtracer pillow pyinstaller
+      - name: Build
+        shell: bash
+        run: |
+          pyinstaller --noconfirm --windowed --name SVGDonusturucu \
+            --exclude-module onnxruntime --exclude-module numpy \
+            --exclude-module networkx --exclude-module pymupdf4llm \
+            --exclude-module pymupdf_layout \
+            $([ "$RUNNER_OS" = "Windows" ] && echo --onefile) app.py
+      - name: Zip (macOS)
+        if: runner.os == 'macOS'
+        run: cd dist && zip -r SVGDonusturucu-mac.zip SVGDonusturucu.app
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SVGDonusturucu-${{ matrix.os }}
+          path: |
+            dist/SVGDonusturucu.exe
+            dist/SVGDonusturucu-mac.zip
